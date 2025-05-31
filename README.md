@@ -13,6 +13,7 @@ Este é um projeto de controle de temperatura utilizando um teclado matricial 4x
 - MikroBasic 7.2
 - Microcontrolador PIC 16F690
 - Teclado matricial 4x4
+- Diplay LCD 20x4
 - Sensor de temperatura
 
 ## Licença
