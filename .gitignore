@@ -1,0 +1,6 @@
+*.asm
+*.dbg
+*.dlt
+*.hex
+*.lst
+*.mcl
