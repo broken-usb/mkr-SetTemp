@@ -1,0 +1,165 @@
+program SetPointTeclado4x4
+
+dim tecla          as byte
+dim temp_max       as byte
+dim temp_min       as byte
+dim contador       as byte
+dim controle       as integer
+dim temperatura    as integer
+dim adc_convertido as word
+dim adc_val        as word
+dim texto          as string[6]
+
+' Array para facilitar a implementação do Teclado 4x4
+const teclado   as byte[16] = (1,4,7,10,2,5,8,0,3,6,9,11,12,13,14,15)
+' ------------------------------------------------
+' Valores do Teclado 4x4 no PROTEUS
+'
+' Teclas Especiais:
+'
+'10 = ON/C
+'11 = "="
+'12 = %
+'13 = X
+'14 = -
+'15 = +
+'
+'teclado = (7,4,1,10,8,5,2,0,9,6,3,11,12,13,14,15)
+' ------------------------------------------------
+' Valores do Teclado 4x4 na REALIDADE
+'
+' Teclas Especiais:
+'
+'10 = *
+'11 = #
+'12 = A
+'13 = B
+'14 = C
+'15 = D
+'teclado = (1,4,7,10,2,5,8,0,3,6,9,11,12,13,14,15)
+' ------------------------------------------------
+
+inicio:
+TRISA=%11101101 ' RA1 e RA4 Estão como Output pois controlam os LEDs
+' Sem TRISC, pois sera gerenciado pelo "KeyPad_Init(PORTC)"
+TRISB=%00000000
+ANSEL=%00000001 ' AN0 é a Entrada do Potenciometro
+ANSELH=%00000000
+INTCON=%00000000
+
+' Configuração do Hardware
+KeyPad_Init(PORTC)
+Lcd_Config(PORTB,7,6,5,4,PORTA,2,3,5) 'RW(0) foi Conectado Diretamente ao GND
+
+' Limpeza das Portas
+PORTA=0
+PORTB=0
+PORTC=0
+
+' Limpeza das Variaveis
+contador    = 0
+controle    = 0
+tecla       = 0
+temp_max    = 100
+temp_min    = 0
+temperatura = 0
+adc_val     = 0
+
+' Configuração Final do Display LCD
+Lcd_Cmd(Lcd_Cursor_Off)
+Lcd_Cmd(Lcd_Clear)
+
+executa:
+        ' Calculo de Temperatura do Potenciometro
+        ' ------------------------------------------------
+        adc_val = Adc_Read(0)
+        adc_convertido = (adc_val * 61) / 320 ' As Constantes Foram Divididas Por 3,2 Para Caber na Variavel Tipo "word"
+        temperatura = adc_convertido - 30 ' Converte Para Inteiro e Subtrai 30 Para que o Range vá de -30 -> 165
+        ' ------------------------------------------------
+
+        ' Exibição da Temp.
+        ' ------------------------------------------------
+        Lcd_Out(1,1,"Temp: ")
+        IntToStr(temperatura,texto)
+        Lcd_Out(1,7,texto)
+        ' ------------------------------------------------
+
+        ' Entrada de Valores do Teclado 4x4
+        ' ------------------------------------------------
+        tecla = KeyPad_Released
+        if tecla > 0 then
+           if tecla <= 11 then  ' Teclas 0-9
+              select case contador
+                     case 0
+                          controle = teclado[tecla - 1]
+                     case 1
+                          controle = (controle * 10) + teclado[tecla - 1]
+                     case 2
+                          if ((controle * 10) + teclado[tecla - 1]) < 166 then
+                             controle = (controle * 10) + teclado[tecla - 1]
+                          else
+                              controle = 165
+                          end if
+              end select
+              contador = contador + 1
+           end if
+           ' ------------------------------------------------
+
+           ' Funções Especiais do Teclado 4x4
+           ' ------------------------------------------------
+           if tecla = 16 then  ' Define a Temp. Maxima
+              if contador > 0 then
+                 temp_max = controle
+                 controle = 0
+                 contador = 0
+              end if
+           end if
+
+           if tecla = 15 then  ' Define a Temp. Minima
+              if contador > 0 then
+                 temp_min = controle
+                 controle = 0
+                 contador = 0
+              end if
+           end if
+
+           if tecla = 4 then   ' Limpa o Valor do Teclado 4x4
+              controle = 0
+              contador = 0
+           end if
+        end if
+        ' ------------------------------------------------
+
+        ' Exibição dos Valores
+        ' ------------------------------------------------
+        Lcd_Out(2,1,"Ent: ")
+        IntToStr(controle,texto)
+        Lcd_Out(2,6,texto)
+
+        Lcd_Out(3,1,"Max: ")
+        ByteToStr(temp_max,texto)
+        Lcd_Out(3,6,texto)
+
+        Lcd_Out(4,1,"Min: ")
+        ByteToStr(temp_min,texto)
+        Lcd_Out(4,6,texto)
+        ' ------------------------------------------------
+        
+        ' Ativação dos LED
+        ' ------------------------------------------------
+        if temperatura > temp_max then
+           PORTA.4 = 1
+        else
+           PORTA.4 = 0
+        end if
+        
+        if temperatura < temp_min then
+           PORTA.1 = 1
+        else
+           PORTA.1 = 0
+        end if
+        ' ------------------------------------------------
+
+        delay_ms(100)
+        goto executa
+end.
